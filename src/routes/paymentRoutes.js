@@ -3,7 +3,7 @@ import { handlePaymentWebHook, healthCheck } from '../controllers/paymentControl
 
 const router = Router();
 
-router.post('/payments/webhook', handlePaymentWebHook);
-router.get('/payments/health', healthCheck);
+router.post('/webhook', handlePaymentWebHook);
+router.get('/health', healthCheck);
 
 export default router;

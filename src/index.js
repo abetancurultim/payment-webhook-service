@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3032;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use('/api', paymentRoutes);
+app.use('/payments', paymentRoutes);
 
 app.get('/', (req, res) => {
     res.send('Payment Webhook Service is running');
