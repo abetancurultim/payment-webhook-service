@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3032;
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use('/payments', paymentRoutes);
 

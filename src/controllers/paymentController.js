@@ -2,16 +2,6 @@ import { supabase } from "../config/supabase.js";
 
 export const handlePaymentWebHook = async (req, res) => {
     try {
-        const authHeader = req.headers.authorization;
-        const expectedToken = process.env.PAYMENTS_WAY_TOKEN;
-
-        if( expectedToken ) {
-            if( !authHeader || authHeader !== `Bearer ${expectedToken}` ) {
-                console.warn('Unauthorized access attempt to payment webhook');
-                return res.status(401).send('Unauthorized');
-            }
-        }
-
         const data = req.body;
 
         if(! data || !data.idstatus || !data.externalorder) {
