@@ -19,6 +19,8 @@ export const handlePaymentWebHook = async (req, res) => {
             paymentmethod
         } = data;
 
+        const payerName = fullname || (idperson ? `${idperson.firstname || ''} ${idperson.lastname || ''}`.trim() : '');
+
         console.log(`Registrando pago de orden ${orderId} - Estado: ${idstatus.nombre}`);
 
         let userId = null;
@@ -52,7 +54,8 @@ export const handlePaymentWebHook = async (req, res) => {
                 status_name: idstatus.nombre,
                 payer_email: idperson?.email,
                 payer_phone: idperson?.phone,
-                payer_name: fullname,
+                payer_name: payerName,
+                payer_identification: idperson?.identification,
                 payment_method: paymentmethod?.nombre,
                 raw_response: data,
                 user_id: userId

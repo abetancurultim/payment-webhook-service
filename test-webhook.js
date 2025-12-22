@@ -6,7 +6,7 @@ dotenv.config();
 // Configuración basada en tu proyecto actual
 const PORT = process.env.PORT || 3032;
 // La ruta en tu index.js es '/api' y en paymentRoutes.js es '/payments/webhook'
-const webhookUrl = `http://localhost:${PORT}/api/payments/webhook`;
+const webhookUrl = `http://localhost:${PORT}/payments/webhook`;
 const token = process.env.PAYMENTS_WAY_TOKEN;
 
 const mockPayload = {
@@ -15,7 +15,7 @@ const mockPayload = {
     id: Date.now().toString(), 
     externalorder: "ORD-TEST-" + Date.now(),
     amount: 50000,
-    fullname: "Usuario de Prueba",
+    fullname: "",
     idstatus: {
         id: 34, // 34 es Aprobada según el código
         nombre: "Aprobada"
