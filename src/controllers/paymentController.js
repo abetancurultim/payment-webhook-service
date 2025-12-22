@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import { sendPaymentNotification } from "../services/emailService.js";
 
 export const handlePaymentWebHook = async (req, res) => {
     try {
@@ -67,6 +68,88 @@ export const handlePaymentWebHook = async (req, res) => {
                 error: 'Database error',
                 details: dbError
             })
+        }
+
+        // --- Enviar Notificación por Correo ---
+        if (idperson?.email) {
+            // No bloqueamos la respuesta del webhook esperando el correo
+            sendPaymentNotification(idperson.email, {
+                orderId: orderId,
+                statusName: idstatus.nombre,
+                amount: amountVal,
+                payerName: payerName,
+                isSuccess: idstatus.id === 34
+            }).catch(err => console.error('Error asíncrono en notificación de correo:', err));
+        }
+
+        // --- Lógica de Actualización de Suscripción ---
+        const identification = idperson?.identification;
+        if (identification) {
+            try {
+                // 1. Buscar la suscripción activa o pendiente para esta persona
+                const { data: subscription, error: subError } = await supabase
+                    .from('suscripciones')
+                    .select('*')
+                    .eq('identification_doc', identification)
+                    .in('status', ['pending_first_payment', 'active', 'past_due'])
+                    .maybeSingle();
+
+                if (subError) {
+                    console.error('Error buscando suscripción:', subError);
+                } else if (subscription) {
+                    const isSuccess = idstatus.id === 34;
+                    const updates = {
+                        updated_at: new Date().toISOString(),
+                        response_data: {
+                            last_webhook_payload: data,
+                            last_transaction_id: transactionId
+                        }
+                    };
+
+                    if (isSuccess) {
+                        const newInstallmentsPaid = (subscription.installments_paid || 0) + 1;
+                        updates.installments_paid = newInstallmentsPaid;
+                        updates.last_payment_date = new Date().toISOString();
+                        
+                        // Calcular fecha del próximo pago (1 mes después)
+                        const nextDate = new Date();
+                        nextDate.setMonth(nextDate.getMonth() + 1);
+                        updates.next_payment_date = nextDate.toISOString();
+
+                        // Actualizar estado
+                        if (subscription.status === 'pending_first_payment' || subscription.status === 'past_due') {
+                            updates.status = 'active';
+                        }
+                        
+                        if (newInstallmentsPaid >= subscription.total_installments) {
+                            updates.status = 'completed';
+                        }
+
+                        // Guardar ID de transacción inicial si no existe
+                        if (!subscription.initial_transaction_id) {
+                            updates.initial_transaction_id = transactionId;
+                        }
+                    } else {
+                        // Si el pago no fue exitoso, podríamos marcar como past_due si ya estaba activa
+                        if (subscription.status === 'active') {
+                            updates.status = 'past_due';
+                        }
+                    }
+
+                    const { error: updateError } = await supabase
+                        .from('suscripciones')
+                        .update(updates)
+                        .eq('id', subscription.id);
+
+                    if (updateError) {
+                        console.error('Error actualizando suscripción:', updateError);
+                    } else {
+                        console.log(`Suscripción ${subscription.id} actualizada correctamente.`);
+                    }
+                }
+            } catch (err) {
+                console.error('Excepción al procesar suscripción:', err);
+            }
         }
         
         // 5. Respuesta
