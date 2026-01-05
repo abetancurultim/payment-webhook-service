@@ -1,5 +1,5 @@
 import { supabase } from "../config/supabase.js";
-import { sendPaymentNotification } from "../services/emailService.js";
+import { sendPaymentNotification, sendWelcomeSubscriptionEmail } from "../services/emailService.js";
 
 export const handlePaymentWebHook = async (req, res) => {
     try {
@@ -107,6 +107,7 @@ export const handlePaymentWebHook = async (req, res) => {
                     };
 
                     if (isSuccess) {
+                        const isFirstPayment = (subscription.installments_paid || 0) === 0 || subscription.status === 'pending_first_payment';
                         const newInstallmentsPaid = (subscription.installments_paid || 0) + 1;
                         updates.installments_paid = newInstallmentsPaid;
                         updates.last_payment_date = new Date().toISOString();
@@ -128,6 +129,15 @@ export const handlePaymentWebHook = async (req, res) => {
                         // Guardar ID de transacción inicial si no existe
                         if (!subscription.initial_transaction_id) {
                             updates.initial_transaction_id = transactionId;
+                        }
+
+                        // --- Enviar Correo de Bienvenida si es el primer pago ---
+                        if (isFirstPayment && idperson?.email) {
+                            sendWelcomeSubscriptionEmail(idperson.email, {
+                                payerName: payerName,
+                                orderId: orderId,
+                                amount: amountVal
+                            }).catch(err => console.error('Error asíncrono en correo de bienvenida:', err));
                         }
                     } else {
                         // Si el pago no fue exitoso, podríamos marcar como past_due si ya estaba activa

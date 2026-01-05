@@ -1,7 +1,13 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -66,5 +72,41 @@ export const sendPaymentNotification = async (to, paymentData) => {
         console.log(`Correo enviado correctamente a ${to}: ${info.messageId}`);
     } catch (error) {
         console.error('Error enviando correo:', error);
+    }
+};
+
+/**
+ * Envía un correo de bienvenida tras el primer pago exitoso de la suscripción.
+ * @param {string} to - Correo del cliente.
+ * @param {object} data - Datos para el correo (payerName, orderId, amount).
+ */
+export const sendWelcomeSubscriptionEmail = async (to, data) => {
+    if (!to) return;
+
+    const { payerName, orderId, amount, cc } = data;
+    const subject = '¡Bienvenido a tu Suscripción! - Primer Pago Exitoso';
+
+    let htmlContent = '';
+    try {
+        const templatePath = path.join(__dirname, '../../email.html');
+        htmlContent = await fs.readFile(templatePath, 'utf-8');
+        // Reemplazar el placeholder o texto genérico con el nombre real
+        htmlContent = htmlContent.replace('¡Bienvenido!', `¡Bienvenido, ${payerName || 'Cliente'}!`);
+    } catch (err) {
+        console.error('Error leyendo plantilla de email:', err);
+        return;
+    }
+
+    try {
+        await transporter.sendMail({
+            from: '"Bienestar Plus - Coltefinanciera" <' + process.env.SENDGRID_FROM_EMAIL + '>',
+            to,
+            cc: cc || "mariana.b@ultimmarketing.com",
+            subject,
+            html: htmlContent,
+        });
+        console.log('Correo de bienvenida enviado a ' + to);
+    } catch (error) {
+        console.error('Error enviando correo de bienvenida:', error);
     }
 };
